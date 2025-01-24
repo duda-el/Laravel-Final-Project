@@ -6,6 +6,9 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
+use App\Mail\WelcomeMail;
+use Illuminate\Support\Facades\Mail;
+
 
 class AuthController extends Controller
 {
@@ -16,15 +19,16 @@ class AuthController extends Controller
                 'name' => 'required|string|max:255',
                 'email' => 'required|string|email|max:255|unique:users', 
                 'password' => 'required|string|min:8|confirmed',
+            ], [
+                'name.required' => 'Name field is required.',
+                'email.required' => 'Email field is required.',
+                'email.email' => 'Please provide a valid email address.',
+                'email.unique' => 'This email is already registered.',
+                'password.required' => 'Password field is required.',
+                'password.min' => 'Password must be at least 8 characters long.',
+                'password.confirmed' => 'Password confirmation does not match.',
             ]);
     
-            if($request->fails()){
-                return response()->json([
-                    'status' => false,
-                    'message' => 'validation error',
-                    'errors' => $request->errors()
-                ],401);
-            }
     
             $user = User::create([
                 'name' => $request->name,
@@ -33,6 +37,8 @@ class AuthController extends Controller
             ]);
     
             $token = $user->createToken('auth_token')->plainTextToken;
+
+            Mail::to($user->email)->send(new WelcomeMail($user));
     
             return response()->json([
                 'message' => 'User registered successfully',
